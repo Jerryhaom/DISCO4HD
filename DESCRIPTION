@@ -1,9 +1,23 @@
-Package: DISCO4HD
-Title: Distance of covariance as a measure of homeostatic dysregulation
+Package: mypackage
+Title: My Awesome Package
 Version: 0.1.0
 Author: Meng Hao
 Maintainer: Meng Hao <haombio@gmail.com>
 Description: A minimal example package.
-License: MIT
+License: MIT + file LICENSE
 Encoding: UTF-8
 RoxygenNote: 7.3.2
+Suggests: 
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+Depends: 
+    R (>= 3.5)
+LazyData: true
+Imports: 
+    Rcpp (>= 1.0.7),
+    RcppArmadillo
+LinkingTo: 
+    Rcpp,
+    RcppArmadillo
+SystemRequirements: OpenMP
