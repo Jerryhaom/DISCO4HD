@@ -8,20 +8,20 @@ install.packages("devtools") <br>
 devtools::install_github("Jerryhaom/DISCO4HD") <br>
 
 # Examples
-# Load sample data
+#Load sample data
 data(NHANES4) <br>
-# impute missing data 
+#impute missing data 
 NHANES4=imputeMissings::impute(NHANES4) <br>
-# Define biomarkers
+#Define biomarkers
 biomarkers <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv") <br>
 
-# Create young reference (age ≤ 30)
+#Create young reference (age ≤ 30)
 ref_young <- subset(NHANES4, age <= 30) <br>
-# Calculate DISCO (single-threaded R)
+#Calculate DISCO (single-threaded R)
 result <- cal_disco(NHANES4, biomarkers, ref_young) <br>
-# Parallel R implementation
+#Parallel R implementation
 result_parallel <- cal_disco(NHANES4, biomarkers, ref_young, parallel = TRUE) <br>
-# C++ implementation
+#C++ implementation
 result_cpp <- cal_disco(NHANES4, biomarkers, ref_young, cpp = TRUE) <br>
 
 # Citation <br>
