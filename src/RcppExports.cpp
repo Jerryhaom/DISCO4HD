@@ -13,7 +13,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // disco_optimized_rcpp
 arma::vec disco_optimized_rcpp(const arma::mat& d, const arma::mat& d2, const arma::mat& weight, int ncores);
-RcppExport SEXP _mypackage_disco_optimized_rcpp(SEXP dSEXP, SEXP d2SEXP, SEXP weightSEXP, SEXP ncoresSEXP) {
+RcppExport SEXP _DISCO4HD_disco_optimized_rcpp(SEXP dSEXP, SEXP d2SEXP, SEXP weightSEXP, SEXP ncoresSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,11 +27,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_mypackage_disco_optimized_rcpp", (DL_FUNC) &_mypackage_disco_optimized_rcpp, 4},
+    {"_DISCO4HD_disco_optimized_rcpp", (DL_FUNC) &_DISCO4HD_disco_optimized_rcpp, 4},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_mypackage(DllInfo *dll) {
+RcppExport void R_init_DISCO4HD(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

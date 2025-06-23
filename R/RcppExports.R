@@ -2,6 +2,6 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 disco_optimized_rcpp <- function(d, d2, weight, ncores = 4L) {
-    .Call('_mypackage_disco_optimized_rcpp', PACKAGE = 'mypackage', d, d2, weight, ncores)
+    .Call(`_DISCO4HD_disco_optimized_rcpp`, d, d2, weight, ncores)
 }
 

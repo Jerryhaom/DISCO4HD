@@ -1,29 +1,64 @@
-#' cal_disco
-#' @description Calculate distance of covariance for quantifying homeostatic dysregulations
-#' @param d4 Dataframe, containing age and biomarker information
-#' @param var Enrolled biomarkers variables for analysis
-#' @param ref Dataframe, young population information as a reference
-#' @param parallel bool, use multiple cores for computation (default: FALSE)
-#' @param cpp bool, use Rcpp with multiple cores for computation (default: FALSE)
-#' @param ncores numeric, cpu cores for computation (default: 4)
+#' Calculate Distance of Covariance (DISCO)
 #'
-#' @return a data.frame with DISCO values
+#' Quantifies homeostatic dysregulation by comparing biomarker covariance
+#' between target population and young reference population.
+#'
+#' @param d4 Dataframe containing subject-level data with age and biomarkers.
+#' @param var Character vector specifying biomarker column names for analysis.
+#' @param ref Dataframe containing reference data from young population.
+#' @param parallel Logical indicating whether to use parallel computation (default: FALSE).
+#' @param cpp Logical indicating whether to use Rcpp implementation (default: FALSE).
+#' @param ncores Integer specifying number of CPU cores for parallelization (default: 4).
+#'
+#' @return A data.frame containing:
 #' \itemize{
-#' \item column DISCO, distance of covariance
+#'   \item \code{DISCO}: DISCO values
+#'   \item Original columns from input \code{d4}
 #' }
-#' @export
+#'
+#' @section Algorithm Details:
+#' Computes Mahalanobis-like distance between covariance matrices:
+#' 1. Calculate biomarker-age correlations to derive weighting matrix
+#' 2. Compare covariance structures:
+#'    - Target: Covariance of reference + single subject
+#'    - Reference: Covariance of young population
+#' 3. Output: log-transformed weighted matrix differences
+#'
+#' @section Computation Options:
+#' - R single-threaded: \code{parallel = FALSE, cpp = FALSE}
+#' - R multi-threaded: \code{parallel = TRUE, cpp = FALSE}
+#' - C++ optimized: \code{cpp = TRUE} (recommended for large datasets)
 #'
 #' @examples
-#' \dontrun{
+#' # Load sample data
 #' data(NHANES4)
-#' var <- c("age", "albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv", "rdw", "wbc", "ggt")
-#' NHANES4y <- NHANES4[which(NHANES4$age <= 30), ]
-#' NHANES4m <- cal_disco(NHANES4, var, NHANES4y)
+#' # impute missing data
+#' NHANES4=imputeMissings::impute(NHANES4)
+#' # Define biomarkers
+#' biomarkers <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv")
+#'
+#' # Create young reference (age ≤ 30)
+#' ref_young <- subset(NHANES4, age <= 30)
+#'
+#' # Calculate DISCO (single-threaded R)
+#' result <- cal_disco(NHANES4, biomarkers, ref_young)
+#'
+#' \donttest{
+#' # Parallel R implementation
+#' result_parallel <- cal_disco(NHANES4, biomarkers, ref_young, parallel = TRUE)
+#'
+#' # C++ implementation
+#' result_cpp <- cal_disco(NHANES4, biomarkers, ref_young, cpp = TRUE)
 #' }
-
+#'
+#' @export
+#' @importFrom foreach %dopar%
+#' @importFrom parallel makeCluster stopCluster
+#' @importFrom doParallel registerDoParallel
 cal_disco <- function(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4) {
 
   if (!all(var %in% names(d4)))  stop("Some variables not found in d4")
+  if (!all("age" %in% names(d4)))  stop("Age not found in d4")
   if (!all(var %in% names(ref)))  stop("Some variables not found in ref")
 
   cc <- apply(d4[, var, drop = FALSE], 2, function(x) cor(d4$age, x, use = "complete.obs"))
@@ -37,10 +72,7 @@ cal_disco <- function(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4) {
   n_ref <- nrow(d_ref)
 
   if (cpp) {
-    # Rcpp 实现
-    if (!exists("disco_optimized_rcpp")) {
-      stop("Rcpp function not loaded. Reinstall package with Rcpp support.")
-    }
+    # Rcpp
     mc1 <- disco_optimized_rcpp(
       as.matrix(d_data),
       as.matrix(d_ref),
@@ -50,19 +82,23 @@ cal_disco <- function(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4) {
     return(data.frame(d4, DISCO = mc1))
   }
   else if (parallel) {
-    # 并行 R 实现
+    #
     if (!requireNamespace("doParallel", quietly = TRUE)) {
       stop("doParallel package required for parallel computation")
     }
+    if (!requireNamespace("foreach", quietly = TRUE)) {
+      stop("foreach package required for parallel computation")
+    }
+
+    `%dopar%` <- foreach::`%dopar%`
 
     cl <- parallel::makeCluster(ncores)
     doParallel::registerDoParallel(cl)
-
-    # 导出必要变量
-    parallel::clusterExport(cl, c("d_ref", "weight", "n_ref"),
+    ref_cor <- cor(d_ref, use = "pairwise.complete.obs")
+    parallel::clusterExport(cl,
+                            c("d_ref", "d_data", "weight", "n_ref", "ref_cor"),
                             envir = environment())
-
-    # 计算 DISCO
+    parallel::clusterEvalQ(cl, library(stats))
     results <- foreach::foreach(
       i = 1:nrow(d_data),
       .combine = c,
@@ -70,7 +106,7 @@ cal_disco <- function(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4) {
     ) %dopar% {
       d1 <- rbind(d_ref, d_data[i, ])
       cc1 <- cor(d1, use = "pairwise.complete.obs")
-      ds <- sum((cor(d_ref, use = "pairwise.complete.obs") - cc1)^2 * weight, na.rm = TRUE)
+      ds <- sum((ref_cor - cc1)^2 * weight, na.rm = TRUE)
       log(ds * n_ref * n_ref)
     }
 
@@ -78,18 +114,18 @@ cal_disco <- function(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4) {
     return(data.frame(d4, DISCO = results))
   }
   else {
-        # 单线程 R 实现
-        mc <- numeric(nrow(d_data))
+    # 单线程 R 实现
+    mc <- numeric(nrow(d_data))
 
-        ref_cor <- cor(d_ref, use = "pairwise.complete.obs")
+    ref_cor <- cor(d_ref, use = "pairwise.complete.obs")
 
-        for (i in 1:nrow(d_data)) {
-          d1 <- rbind(d_ref, d_data[i, ])
-          cc1 <- cor(d1, use = "pairwise.complete.obs")
-          ds <- sum((ref_cor - cc1)^2 * weight, na.rm = TRUE)
-          mc[i] <- log(ds * n_ref * n_ref)
-        }
+    for (i in 1:nrow(d_data)) {
+      d1 <- rbind(d_ref, d_data[i, ])
+      cc1 <- cor(d1, use = "pairwise.complete.obs")
+      ds <- sum((ref_cor - cc1)^2 * weight, na.rm = TRUE)
+      mc[i] <- log(ds * n_ref * n_ref)
+    }
 
-        return(data.frame(d4, DISCO = mc))
-      }
+    return(data.frame(d4, DISCO = mc))
+  }
 }

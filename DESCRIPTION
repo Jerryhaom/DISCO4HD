@@ -1,23 +1,19 @@
 Package: DISCO4HD
+Type: Package
 Title: DISCO as a measure of homeostatic dysregulations
 Version: 0.1.0
-Author: Meng Hao
-Maintainer: Meng Hao <haombio@gmail.com>
-Description: A minimal example package.
-License: MIT + file LICENSE
+Authors@R: person("Meng", "Hao", 
+                  email = "haombio@gmail.com", 
+                  role = c("aut", "cre"))
+Description: calculate distance of covariance
+     by comparing biomarker covariance between target population and young reference population.
+License: What license is it under?
 Encoding: UTF-8
-RoxygenNote: 7.3.2
-Suggests: 
-    testthat (>= 3.0.0)
-Config/testthat/edition: 3
-Roxygen: list(markdown = TRUE)
-Depends: 
-    R (>= 3.5)
 LazyData: true
 Imports: 
-    Rcpp (>= 1.0.7),
+    Rcpp (>= 1.0.8),
     RcppArmadillo
 LinkingTo: 
     Rcpp,
     RcppArmadillo
-SystemRequirements: OpenMP
+RoxygenNote: 7.3.2
