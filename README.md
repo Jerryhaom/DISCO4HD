@@ -8,11 +8,11 @@ install.packages("devtools") <br>
 devtools::install_github("Jerryhaom/DISCO4HD") <br>
 
 # Examples
-#Load sample data
+#Load sample data <br>
 data(NHANES4) <br>
-#impute missing data 
+#impute missing data <br>
 NHANES4=imputeMissings::impute(NHANES4) <br>
-#Define biomarkers
+#Define biomarkers  <br>
 biomarkers <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv") <br>
 
 #Create young reference (age ≤ 30) <br>
