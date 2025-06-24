@@ -24,6 +24,19 @@ result_parallel <- cal_disco(NHANES4, biomarkers, ref_young, parallel = TRUE) <b
 #C++ implementation (recommended for large datasets) <br>
 result_cpp <- cal_disco(NHANES4, biomarkers, ref_young, cpp = TRUE) <br>
 
+# Implementation with Python code
+pip install Py/dist/DISCO4HD-1.0-cp310-cp310-linux_x86_64.whl
+
+import DISCO4HD  <br>
+from DISCO4HD import cal_disco  <br>
+help(help(DISCO4HD.cal_disco))  <br>
+#for demo example data (randomly generated) <br>
+DISCO4HD.example() <br>
+
+#load NHANES data
+
+
+
 # Citation <br>
 Meng Hao et al. Distance of covariance (DISCO), a novel measure of network homeostatic dysregulation, reveals organ system interconnections underlying mortality and disease risk. doi: 10.1101/2025.05.06.25327108
 
