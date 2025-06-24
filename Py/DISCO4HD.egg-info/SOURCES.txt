@@ -1,0 +1,6 @@
+disco.cpp
+setup.py
+DISCO4HD.egg-info/PKG-INFO
+DISCO4HD.egg-info/SOURCES.txt
+DISCO4HD.egg-info/dependency_links.txt
+DISCO4HD.egg-info/top_level.txt
