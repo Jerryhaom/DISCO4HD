@@ -1,0 +1,9 @@
+setup.py
+DISCO4HD/__init__.py
+DISCO4HD/disco.cpp
+DISCO4HD/disco_optimized.cpython-310-x86_64-linux-gnu.so
+DISCO4HD/main.py
+DISCO4HD.egg-info/PKG-INFO
+DISCO4HD.egg-info/SOURCES.txt
+DISCO4HD.egg-info/dependency_links.txt
+DISCO4HD.egg-info/top_level.txt
