@@ -38,5 +38,5 @@ DISCO4HD.example() <br>
 
 
 # Citation <br>
-Meng Hao et al. Distance of covariance (DISCO), a novel measure of network homeostatic dysregulation, reveals organ system interconnections underlying mortality and disease risk. doi: 10.1101/2025.05.06.25327108
+Meng Hao et al. Human aging reflects increases in entropy across organ networks. doi: https://doi.org/10.1101/2025.05.06.25327108
 
