@@ -2,71 +2,42 @@
 % Please edit documentation in R/cal_disco.R
 \name{cal_disco}
 \alias{cal_disco}
-\title{Calculate Distance of Covariance (DISCO)}
+\title{cal_disco}
 \usage{
 cal_disco(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4)
 }
 \arguments{
-\item{d4}{Dataframe containing subject-level data with age and biomarkers.}
+\item{d4}{Dataframe, containing age and biomarker information}
 
-\item{var}{Character vector specifying biomarker column names for analysis.}
+\item{var}{Enrolled biomarkers variables for analysis}
 
-\item{ref}{Dataframe containing reference data from young population.}
+\item{ref}{Dataframe, young population information as a reference}
 
-\item{parallel}{Logical indicating whether to use parallel computation (default: FALSE).}
+\item{parallel}{bool, use multiple cores for computation (default: FALSE)}
 
-\item{cpp}{Logical indicating whether to use Rcpp implementation (default: FALSE).}
+\item{cpp}{bool, use Rcpp with multiple cores for computation (default: FALSE)}
 
-\item{ncores}{Integer specifying number of CPU cores for parallelization (default: 4).}
+\item{ncores}{numeric, cpu cores for computation (default: 4)}
 }
 \value{
-A data.frame containing:
+a data.frame with DISCO values
 \itemize{
-  \item \code{DISCO}: DISCO values
-  \item Original columns from input \code{d4}
+\item column DISCO, distance of covariance
 }
 }
 \description{
-Quantifies homeostatic dysregulation by comparing biomarker covariance
-between target population and young reference population.
+Calculate distance of covariance for quantifying homeostatic dysregulations
 }
-\section{Algorithm Details}{
-
-Computes Mahalanobis-like distance between covariance matrices:
-1. Calculate biomarker-age correlations to derive weighting matrix
-2. Compare covariance structures:
-   - Target: Covariance of reference + single subject
-   - Reference: Covariance of young population
-3. Output: log-transformed weighted matrix differences
+\details{
+Biomarkers and age must be finite and complete. The reference needs
+at least three rows and positive variance in every biomarker. Weights are
+estimated from all rows of d4. A zero perturbation returns -Inf.
 }
-
-\section{Computation Options}{
-
-- R single-threaded: \code{parallel = FALSE, cpp = FALSE}
-- R multi-threaded: \code{parallel = TRUE, cpp = FALSE}
-- C++ optimized: \code{cpp = TRUE} (recommended for large datasets)
-}
-
 \examples{
-# Load sample data
+\dontrun{
 data(NHANES4)
-# impute missing data
-NHANES4=imputeMissings::impute(NHANES4)
-# Define biomarkers
-biomarkers <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv")
-
-# Create young reference (age ≤ 30)
-ref_young <- subset(NHANES4, age <= 30)
-
-# Calculate DISCO (single-threaded R)
-result <- cal_disco(NHANES4, biomarkers, ref_young)
-
-\donttest{
-# Parallel R implementation
-result_parallel <- cal_disco(NHANES4, biomarkers, ref_young, parallel = TRUE)
-
-# C++ implementation
-result_cpp <- cal_disco(NHANES4, biomarkers, ref_young, cpp = TRUE)
+var <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv", "rdw", "wbc", "ggt")
+NHANES4y <- NHANES4[which(NHANES4$age <= 30), ]
+NHANES4m <- cal_disco(NHANES4, var, NHANES4y)
 }
-
 }

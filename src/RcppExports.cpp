@@ -11,6 +11,16 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// disco_openmp_enabled
+bool disco_openmp_enabled();
+RcppExport SEXP _DISCO4HD_disco_openmp_enabled() {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    rcpp_result_gen = Rcpp::wrap(disco_openmp_enabled());
+    return rcpp_result_gen;
+END_RCPP
+}
 // disco_optimized_rcpp
 arma::vec disco_optimized_rcpp(const arma::mat& d, const arma::mat& d2, const arma::mat& weight, int ncores);
 RcppExport SEXP _DISCO4HD_disco_optimized_rcpp(SEXP dSEXP, SEXP d2SEXP, SEXP weightSEXP, SEXP ncoresSEXP) {
@@ -27,6 +37,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_DISCO4HD_disco_openmp_enabled", (DL_FUNC) &_DISCO4HD_disco_openmp_enabled, 0},
     {"_DISCO4HD_disco_optimized_rcpp", (DL_FUNC) &_DISCO4HD_disco_optimized_rcpp, 4},
     {NULL, NULL, 0}
 };
