@@ -34,10 +34,8 @@ at least three rows and positive variance in every biomarker. Weights are
 estimated from all rows of d4. A zero perturbation returns -Inf.
 }
 \examples{
-\dontrun{
-data(NHANES4)
-var <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv", "rdw", "wbc", "ggt")
-NHANES4y <- NHANES4[which(NHANES4$age <= 30), ]
-NHANES4m <- cal_disco(NHANES4, var, NHANES4y)
-}
+demo <- simulate_nhanes_demo(100, seed = 101)
+demo$CRP <- log1p(demo$CRP)
+markers <- disco10_reference("NHANES")$markers
+result <- cal_disco(demo, var = markers, ref = demo[demo$age < 30, ])
 }

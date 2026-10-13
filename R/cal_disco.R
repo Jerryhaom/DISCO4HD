@@ -17,15 +17,15 @@
 #' @export
 #'
 #' @examples
-#' \dontrun{
-#' data(NHANES4)
-#' var <- c("albumin", "alp", "creat", "glucose_mmol", "lymph", "mcv", "rdw", "wbc", "ggt")
-#' NHANES4y <- NHANES4[which(NHANES4$age <= 30), ]
-#' NHANES4m <- cal_disco(NHANES4, var, NHANES4y)
-#' }
+#' demo <- simulate_nhanes_demo(100, seed = 101)
+#' demo$CRP <- log1p(demo$CRP)
+#' markers <- disco10_reference("NHANES")$markers
+#' result <- cal_disco(demo, var = markers, ref = demo[demo$age < 30, ])
 
 cal_disco <- function(d4, var, ref, parallel = FALSE, cpp = FALSE, ncores = 4) {
   if (!is.data.frame(d4) || !is.data.frame(ref)) stop("d4 and ref must be data.frames")
+  if (anyDuplicated(names(d4)) || anyDuplicated(names(ref)))
+    stop("d4 and ref must have unique column names")
   if (!is.character(var) || length(var) < 2L || anyNA(var) || anyDuplicated(var))
     stop("var must name at least two distinct biomarkers")
   if (!all(var %in% names(d4)) || !all(var %in% names(ref))) stop("Some variables not found in d4 or ref")

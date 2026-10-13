@@ -1,0 +1,3 @@
+The package includes `inst/extdata/disco10-references.rds`, the 10,436-byte aggregate reference registry already distributed in the public DISCO4HD repository at commit c27c64de671a34f539b540dbfa2f914f16134335. It contains biomarker means, standard deviations, centered cross-products, correlation matrices, weights and comparison quantiles for five cohorts; it contains no participant records. SHA-256: b6d6a91e641dc85464dc5819e8ab3fc9d8b820bd65637c85281fe8158eb2f4fb.
+
+The historical NHANES4 participant-level example remains excluded. The synthetic demo generates fictional observations from the aggregate parameters. These are teaching examples and must not be used for scientific validation.

@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import argparse
 import os
-from .disco_optimized import disco_optimized_cpp
 from .main import cal_disco
 
 def generate_sample_data(n_samples=1000):

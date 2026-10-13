@@ -1,3 +1,11 @@
+# DISCO4HD 0.3.1 (staged)
+
+- Add NHANES-calibrated synthetic data, scoring and plotting examples.
+- Reject duplicate biomarker column names and invalid one-row age-weight inputs.
+- Preserve the caller's random-number state in the simulation helper.
+- Exclude the historical participant-level NHANES4 example pending documented
+  provenance and redistribution conditions. Scoring functions are unchanged.
+
 # DISCO4HD 0.3.0
 
 - Add `cal_disco10()`, `disco10_reference()` and `disco10_references()` for frozen-reference single-person and batch DISCO / raw DM.
@@ -17,3 +25,11 @@
 - Add backend, invalid-input and decomposition regression tests.
 
 Migration: 0.1.0 decomposition raw sums match the unweighted mode on nondegenerate complete input, but its per-pair means were twice the corrected values. The new default decomposition is a scientific definition change. Existing manuscript pipelines and saved outputs are not automatically recomputed. Original 0.1.0 source/tarball should be retained alongside the release archive.
+# DISCO4HD 0.3.1
+
+- Add a reproducible synthetic NHANES-calibrated generator, CSV example and
+  base-R visualizations with a Markdown walkthrough. No participant records are
+  read by the generator; age effects are explicitly artificial.
+- Preserve caller RNG state and test synthetic scoring against pure R/C++.
+- Give a clear validation error when sample-trained age weights cannot be
+  estimated from a single row. Frozen-reference scoring still accepts one row.

@@ -2,7 +2,7 @@
 
 R implementation of DISCO (Distance of Covariance), accompanying [*Human aging reflects increases in entropy across organ networks*](https://www.medrxiv.org/content/10.1101/2025.05.06.25327108v2). [Web calculator](https://jerryhaom.github.io/DISCO-Calculator/) · [Article analysis code](https://github.com/Jerryhaom/DISCO_Code)
 
-## New in 0.3.0: clinical panel with selectable references
+## Clinical panel with selectable references
 
 ```r
 # install.packages("remotes")
@@ -20,18 +20,18 @@ cal_disco10(x, reference="UKB", comparison="NHANES")
 
 References: UKB / NHANES / CLHLS contain ten biomarkers; CHARLS lacks RBC and ALB, and RuLAS lacks UREA. `reference` selects the actual calculation matrix. Optional `comparison` uses the web calculator's UKB-based distributions for a separate z-score and approximate percentile. DM is unlogged; only CRP is transformed as ln(CRP + 1). No target age or reference records are needed for frozen-reference scoring.
 
-Read the **[10-biomarker guide](docs/10-biomarker-guide.md)** for required units, equations, reference ages and sample sizes, batch examples, provenance, and calibration limits. R help: `?cal_disco10`, `?disco10_reference`, `?disco10_references`. The existing `cal_disco()` and decomposition interfaces are unchanged from the local 0.2.0 release. The historical `Py/` subtree is retained but is not the implementation of these new R functions and is excluded from R package builds.
+Read the **[10-biomarker guide](docs/10-biomarker-guide.md)** for required units, equations, reference ages and sample sizes, batch examples, provenance, and calibration limits. R help: `?cal_disco10`, `?disco10_reference`, `?disco10_references`. The existing `cal_disco()` and decomposition interfaces are unchanged from the local 0.2.0 release. The `Py/` subtree provides a separate Python scoring package and is excluded from R package builds. Its default NumPy and optional C++ backends use the same generic correlation-perturbation definition.
 
 
-Distance of Covariance (DISCO), version 0.3.0. Computes age-weighted perturbation of biomarker correlations when an individual is added to a reference population.
+Distance of Covariance (DISCO), version 0.3.2 (staged release). Computes age-weighted perturbation of biomarker correlations when an individual is added to a reference population.
 
 ## Install
 
-Use R >= 4.1, a C++17 compiler, and the Rcpp / RcppArmadillo headers. Standard R development tools (including the Fortran runtime used by R's BLAS/LAPACK) are required when building from source.
+Use R >= 4.1, a C++17 compiler and the Rcpp headers. This release uses a self-contained correlation update and does not require RcppArmadillo or a separate Fortran runtime.
 
 ```r
-install.packages(c("Rcpp", "RcppArmadillo", "survival"))
-install.packages("DISCO4HD_0.3.0.tar.gz", repos = NULL, type = "source")
+install.packages(c("Rcpp", "survival"))
+install.packages("DISCO4HD_0.3.2.tar.gz", repos = NULL, type = "source")
 ```
 
 OpenMP is optional: the build uses R's `SHLIB_OPENMP_CXXFLAGS`. `disco_backend_info()$openmp` reports whether the compiled C++ backend supports it. When FALSE, `cpp=TRUE` still accelerates computation but is serial. The `parallel=TRUE` R backend uses PSOCK workers independently of OpenMP.
@@ -79,9 +79,15 @@ See [NEWS.md](NEWS.md). In particular, 0.2.0 changes the decomposition default a
 
 ```sh
 R CMD build DISCO4HD
-R CMD check --no-manual DISCO4HD_0.3.0.tar.gz
+R CMD check --no-manual DISCO4HD_0.3.2.tar.gz
 ```
 
 The tests compare backends with independent correlation recomputation, verify block additivity and invalid inputs, and exercise two PSOCK workers. `DISCO_SKIP_SOCKET_TESTS=1` is an explicit opt-out for restricted sandboxes, not the default.
 
-MIT; see LICENSE.md. Bundled NHANES4 is the pre-existing dataset from 0.1.0; data provenance/documentation is in `?NHANES4`. The synthetic example does not require it.
+MIT; see LICENSE.md. Examples use fictional observations generated from aggregate NHANES reference parameters. The historical NHANES4 participant dataset is excluded from this staged release pending provenance and redistribution documentation; see PUBLIC_DATA.md.
+## Synthetic example
+
+See [the NHANES-calibrated synthetic-data walkthrough](docs/synthetic-nhanes-example.md)
+for a reproducible CSV generator, fixed-reference scores and base-R figures.
+The generated rows are fictional, not NHANES participant records. This staged
+version has not been published to GitHub.
