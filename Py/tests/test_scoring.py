@@ -94,6 +94,40 @@ class ScoringTests(unittest.TestCase):
         zero=pd.DataFrame({'age':[-1.,0.,1.],'a':[1.,-2.,1.],'b':[2.,-4.,2.]})
         with self.assertRaises(ValueError):cal_disco(zero,['a','b'],zero,use_cpp=False)
 
+    def test_complex_values_and_overflow_are_rejected(self):
+        d,r,n=fixture()
+        for target, column in [('data', n[0]), ('reference', n[0]), ('data', 'age')]:
+            x,y=d.copy(),r.copy()
+            frame=x if target=='data' else y
+            frame[column]=frame[column].astype(complex)+1j
+            for backend in [False,True]:
+                with self.subTest(target=target,column=column,backend=backend),self.assertRaises(ValueError):
+                    cal_disco(x,n,y,use_cpp=backend)
+        for target in ['data','reference','age']:
+            x,y=d.copy(),r.copy()
+            if target=='age':x['age']*=1e160
+            elif target=='data':x[n]*=1e160
+            else:y[n]*=1e160
+            with self.subTest(overflow=target),self.assertRaises(ValueError):
+                cal_disco(x,n,y,use_cpp=False)
+
+    def test_seeded_property_checks_and_affine_invariance(self):
+        for seed, count, width in [(1,3,2),(2,11,3),(3,40,8),(4,101,12)]:
+            rng=np.random.default_rng(seed)
+            names=[f'x{i}' for i in range(width)]
+            raw=rng.normal(size=(max(count+10,45),width))
+            d=pd.DataFrame(raw,columns=names)
+            d['age']=raw[:,0]*2+rng.normal(size=len(raw))
+            r=d.iloc[:count].copy()
+            base=cal_disco(d,names,r,use_cpp=False).DISCO
+            scale=np.linspace(.5,3,width);scale[::2]*=-1
+            shift=np.arange(width)*10
+            x,y=d.copy(),r.copy();x[names]=x[names]*scale+shift;y[names]=y[names]*scale+shift
+            for backend in [False,True] if native is not None else [False]:
+                with self.subTest(seed=seed,backend=backend):
+                    np.testing.assert_allclose(cal_disco(d,names,r,use_cpp=backend).DISCO,base,rtol=0,atol=5e-10)
+                    np.testing.assert_allclose(cal_disco(x,names,y,use_cpp=backend).DISCO,base,rtol=0,atol=5e-10)
+
     def test_reference_and_analysis_column_permutation_invariance(self):
         d,r,n=fixture();a=cal_disco(d,n,r,use_cpp=False).DISCO
         b=cal_disco(d,list(reversed(n)),r,use_cpp=False).DISCO

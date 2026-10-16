@@ -1,6 +1,6 @@
-Python package validation candidate, version 1.0.1
+Python package validation candidate, version 1.0.2
 
-This subtree is separate from the R package (0.3.1). Python corrections do not
+This subtree is separate from the R package (0.3.2). Python corrections do not
 imply R manuscript calculations used the faulty Python extension. The accepted
 R centered-sum-of-products implementation is the definition source.
 
@@ -18,5 +18,6 @@ is rejected explicitly; no unverified speed claim is made. use_cpp=True falls
 back with a warning if native is absent. The native backend is currently serial.
 
 Tests: python -m unittest discover -s tests -v
-Prepared CI covers Python 3.10 and 3.12 on Linux/macOS/Windows. Configuration is
-not evidence those remote jobs ran. License and author provenance are retained.
+Python checks were run locally on macOS, including a compiled native backend and
+comparison with R. Three-platform CI currently covers the R package only.
+License and author provenance are retained.

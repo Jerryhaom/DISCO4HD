@@ -8,13 +8,15 @@ def _matrix(frame, markers, label, minimum_rows):
         raise ValueError(f"{label} must be a DataFrame with unique columns")
     if not all(v in frame.columns for v in markers):
         raise ValueError(f"Biomarkers missing in {label}")
-    if not all(pd.api.types.is_numeric_dtype(frame[v]) and not pd.api.types.is_bool_dtype(frame[v]) for v in markers):
-        raise ValueError(f"{label} biomarkers must be numeric")
+    if not all(pd.api.types.is_numeric_dtype(frame[v]) and not pd.api.types.is_bool_dtype(frame[v]) and not pd.api.types.is_complex_dtype(frame[v]) for v in markers):
+        raise ValueError(f"{label} biomarkers must be real numeric")
     data = frame.loc[:, markers].to_numpy(dtype=np.float64)
     if len(data) < minimum_rows or not np.isfinite(data).all():
         raise ValueError(f"{label} must contain at least {minimum_rows} rows and finite complete biomarkers; impute explicitly")
-    if np.any(np.std(data, axis=0, ddof=1) <= 0):
-        raise ValueError(f"{label} biomarkers must have positive variance")
+    with np.errstate(over="ignore", invalid="ignore"):
+        spread = np.std(data, axis=0, ddof=1)
+    if not np.isfinite(spread).all() or np.any(spread <= 0):
+        raise ValueError(f"{label} biomarkers must have positive finite variance")
     return data
 
 def cal_disco(d4, var, ref, parallel=False, use_cpp=True, use_numba=False, ncores=4):
@@ -35,10 +37,12 @@ def cal_disco(d4, var, ref, parallel=False, use_cpp=True, use_numba=False, ncore
         raise NotImplementedError("Historical Numba code was not compiled or validated; use NumPy or C++")
     data = _matrix(d4, list(var), "d4", 2)
     reference = _matrix(ref, list(var), "ref", 3)
-    if "age" not in d4 or not pd.api.types.is_numeric_dtype(d4["age"]) or pd.api.types.is_bool_dtype(d4["age"]):
-        raise ValueError("A numeric age column is required")
+    if "age" not in d4 or not pd.api.types.is_numeric_dtype(d4["age"]) or pd.api.types.is_bool_dtype(d4["age"]) or pd.api.types.is_complex_dtype(d4["age"]):
+        raise ValueError("A real numeric age column is required")
     age = d4["age"].to_numpy(dtype=np.float64)
-    if not np.isfinite(age).all() or np.std(age, ddof=1) <= 0:
+    with np.errstate(over="ignore", invalid="ignore"):
+        age_spread = np.std(age, ddof=1)
+    if not np.isfinite(age).all() or not np.isfinite(age_spread) or age_spread <= 0:
         raise ValueError("Age must be finite and have positive variance")
     correlations = np.array([np.corrcoef(age, data[:, j])[0, 1] for j in range(len(var))])
     weight = np.abs(np.outer(correlations, correlations)); np.fill_diagonal(weight, 0)
@@ -56,6 +60,8 @@ def cal_disco(d4, var, ref, parallel=False, use_cpp=True, use_numba=False, ncore
             values = disco_optimized_cpp(data, reference, weight).reshape(-1)
     else:
         values = _python_disco_impl(data, reference, weight)
+    if np.isnan(values).any() or np.isposinf(values).any():
+        raise ValueError("DISCO calculation overflowed; check input magnitudes and units")
     return d4.assign(DISCO=values)
 
 def _python_disco_impl(data, reference, weight):

@@ -26,7 +26,7 @@ if os.environ.get("DISCO_BUILD_CPP", "0") == "1":
                                     include_dirs=[eigen], cxx_std=17,
                                     extra_compile_args=compile_args, extra_link_args=link_args)]
     cmdclass = {"build_ext": build_ext}
-setup(name="DISCO4HD", version="1.0.1", author="Meng Hao", packages=find_packages(),
+setup(name="DISCO4HD", version="1.0.2", author="Meng Hao", packages=find_packages(),
       license="MIT", license_files=["LICENSE"],
       python_requires=">=3.10", install_requires=["numpy>=1.23,<3", "pandas>=1.5,<3"],
       ext_modules=ext_modules, cmdclass=cmdclass,
