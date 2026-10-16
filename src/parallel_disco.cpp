@@ -1,8 +1,10 @@
-#include <RcppArmadillo.h>
+#include <Rcpp.h>
+#include <cmath>
+#include <limits>
+#include <vector>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
-// [[Rcpp::depends(RcppArmadillo)]]
 
 // [[Rcpp::export]]
 bool disco_openmp_enabled() {
@@ -14,37 +16,61 @@ bool disco_openmp_enabled() {
 }
 
 // [[Rcpp::export]]
-arma::vec disco_optimized_rcpp(const arma::mat& d, const arma::mat& d2,
-                              const arma::mat& weight, int ncores = 4) {
-  const int n = d2.n_rows;
-  const int p = d2.n_cols;
-  if (n < 3 || p < 2 || d.n_cols != d2.n_cols ||
-      weight.n_rows != d2.n_cols || weight.n_cols != d2.n_cols || ncores < 1)
+Rcpp::NumericVector disco_optimized_rcpp(const Rcpp::NumericMatrix& d,
+                                       const Rcpp::NumericMatrix& d2,
+                                       const Rcpp::NumericMatrix& weight,
+                                       int ncores = 4) {
+  const int n = d2.nrow(), p = d2.ncol(), queries = d.nrow();
+  if (n < 3 || p < 2 || d.ncol() != p || weight.nrow() != p ||
+      weight.ncol() != p || ncores < 1)
     Rcpp::stop("Invalid reference, weight dimensions or ncores");
-  if (!d.is_finite() || !d2.is_finite() || !weight.is_finite() || arma::any(arma::vectorise(weight) < 0))
-    Rcpp::stop("Inputs must be finite and weights nonnegative");
-  const arma::rowvec mu = arma::mean(d2, 0);
-  const arma::mat centered = d2.each_row() - mu;
-  const arma::mat ss = centered.t() * centered;
-  const arma::vec sd = arma::sqrt(ss.diag());
-  if (arma::any(sd <= 0)) Rcpp::stop("Reference biomarkers must have positive variance");
-  const arma::mat original = ss / (sd * sd.t());
-  arma::vec result(d.n_rows);
-  // No R API calls inside an OpenMP worker; report failures after joining.
+  for (double value : d) if (!std::isfinite(value)) Rcpp::stop("Inputs must be finite");
+  for (double value : d2) if (!std::isfinite(value)) Rcpp::stop("Inputs must be finite");
+  for (double value : weight)
+    if (!std::isfinite(value) || value < 0)
+      Rcpp::stop("Inputs must be finite and weights nonnegative");
+  std::vector<double> mu(p, 0.0), ss(static_cast<size_t>(p) * p, 0.0), sd(p);
+  for (int j = 0; j < p; ++j) {
+    for (int k = 0; k < n; ++k) mu[j] += d2(k, j);
+    mu[j] /= n;
+  }
+  for (int j = 0; j < p; ++j) {
+    for (int k = 0; k <= j; ++k) {
+      double value = 0.0;
+      for (int r = 0; r < n; ++r)
+        value += (d2(r, j) - mu[j]) * (d2(r, k) - mu[k]);
+      ss[static_cast<size_t>(j) * p + k] = value;
+      ss[static_cast<size_t>(k) * p + j] = value;
+    }
+    sd[j] = std::sqrt(ss[static_cast<size_t>(j) * p + j]);
+    if (!(sd[j] > 0) || !std::isfinite(sd[j]))
+      Rcpp::stop("Reference biomarkers must have positive finite variance");
+  }
+  Rcpp::NumericVector result(queries);
+  const double factor = static_cast<double>(n) / (n + 1.0);
+  // Input checks and allocation occur outside workers; no R API calls in workers.
 #ifdef _OPENMP
 #pragma omp parallel for num_threads(ncores)
 #endif
-  for (int i = 0; i < static_cast<int>(d.n_rows); ++i) {
+  for (int i = 0; i < queries; ++i) {
     try {
-      const arma::rowvec delta = d.row(i) - mu;
-      const arma::mat ss_new = ss + (static_cast<double>(n) / (n + 1.0)) * delta.t() * delta;
-      const arma::vec sn = arma::sqrt(ss_new.diag());
-      const arma::mat corr = ss_new / (sn * sn.t());
-      const arma::mat diff = original - corr;
-      const double value = arma::accu(diff % diff % weight);
+      std::vector<double> delta(p), sn(p);
+      for (int j = 0; j < p; ++j) {
+        delta[j] = d(i, j) - mu[j];
+        sn[j] = std::sqrt(ss[static_cast<size_t>(j) * p + j] + factor * delta[j] * delta[j]);
+      }
+      double value = 0.0;
+      for (int j = 0; j < p; ++j) for (int k = 0; k < p; ++k) {
+        const double ref_ss = ss[static_cast<size_t>(j) * p + k];
+        const double original = ref_ss / (sd[j] * sd[k]);
+        const double augmented = (ref_ss + factor * delta[j] * delta[k]) / (sn[j] * sn[k]);
+        const double difference = original - augmented;
+        value += difference * difference * weight(j, k);
+      }
       result[i] = std::log(value * static_cast<double>(n) * n);
-    } catch (...) { result[i] = arma::datum::nan; }
+    } catch (...) { result[i] = std::numeric_limits<double>::quiet_NaN(); }
   }
-  if (result.has_nan()) Rcpp::stop("Numerical failure in C++ backend; check biomarker scales");
+  for (double value : result) if (std::isnan(value))
+    Rcpp::stop("Numerical failure in C++ backend; check biomarker scales");
   return result;
 }

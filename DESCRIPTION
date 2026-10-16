@@ -1,6 +1,6 @@
 Package: DISCO4HD
 Title: Distance of Covariance (DISCO) as a Measure of Homeostatic Dysregulation
-Version: 0.3.0
+Version: 0.3.2
 Authors@R:
     person("Meng", "Hao", email = "haombio@gmail.com", role = c("aut", "cre"))
 Description: Computation of the Distance of Covariance (DISCO), a correlation-based
@@ -24,8 +24,7 @@ Imports:
     utils,
     parallel
 LinkingTo:
-    Rcpp,
-    RcppArmadillo
+    Rcpp
 Suggests:
     testthat (>= 3.0.0)
 SystemRequirements: C++17, OpenMP (optional)

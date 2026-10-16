@@ -1,109 +1,76 @@
+"""DISCO scoring on the same domain and definition as the R package."""
+import warnings
 import numpy as np
 import pandas as pd
 
+def _matrix(frame, markers, label, minimum_rows):
+    if not isinstance(frame, pd.DataFrame) or not frame.columns.is_unique:
+        raise ValueError(f"{label} must be a DataFrame with unique columns")
+    if not all(v in frame.columns for v in markers):
+        raise ValueError(f"Biomarkers missing in {label}")
+    if not all(pd.api.types.is_numeric_dtype(frame[v]) and not pd.api.types.is_bool_dtype(frame[v]) and not pd.api.types.is_complex_dtype(frame[v]) for v in markers):
+        raise ValueError(f"{label} biomarkers must be real numeric")
+    data = frame.loc[:, markers].to_numpy(dtype=np.float64)
+    if len(data) < minimum_rows or not np.isfinite(data).all():
+        raise ValueError(f"{label} must contain at least {minimum_rows} rows and finite complete biomarkers; impute explicitly")
+    with np.errstate(over="ignore", invalid="ignore"):
+        spread = np.std(data, axis=0, ddof=1)
+    if not np.isfinite(spread).all() or np.any(spread <= 0):
+        raise ValueError(f"{label} biomarkers must have positive finite variance")
+    return data
+
 def cal_disco(d4, var, ref, parallel=False, use_cpp=True, use_numba=False, ncores=4):
-    """
-    Calculate Distance of Covariance (DISCO)
-    
-    Quantifies homeostatic dysregulation by comparing biomarker covariance
-    between target population and young reference population.
-    
-    Parameters
-    ----------
-    d4 : pandas.DataFrame
-        Subject-level data with age and biomarkers
-    var : list
-        Biomarker column names for analysis
-    ref : pandas.DataFrame
-        Reference data from young population
-    parallel : bool, optional
-        Whether to use parallel computation (default: False)
-    cpp : bool, optional
-        Whether to use optimized implementation (default: False)
-    ncores : int, optional
-        Number of CPU cores for parallelization (default: 4)
-    
-    Returns
-    -------
-    pandas.DataFrame
-        Original dataframe with added 'DISCO' column containing DISCO values
-    
-    Notes
-    -----
-    Algorithm:
-    1. Calculate biomarker-age correlations to derive weighting matrix
-    2. Compare covariance structures:
-       - Target: Covariance of reference + single subject
-       - Reference: Covariance of young population
-    3. Output: log-transformed weighted matrix differences
-    """
-    # 输入验证
-    if not all(v in d4.columns for v in var):
-        raise ValueError("Variables missing in input data")
-    if 'age' not in d4.columns:
-        raise ValueError("Age column required")
-    if not all(v in ref.columns for v in var):
-        raise ValueError("Some variables not found in ref")
+    """Return d4 with log DISCO; weights are estimated on all d4 rows.
 
-    # 计算权重矩阵
-    cc = np.array([np.corrcoef(d4['age'], d4[v])[0, 1] for v in var])
-    weight = np.outer(np.abs(cc), np.abs(cc))
-    np.fill_diagonal(weight, 0)
-    weight /= np.sum(weight)
-    
-    # 准备数据
-    d_data = d4[var].values.astype(np.float64)
-    d_ref = ref[var].values.astype(np.float64)
-    
+    log(n_ref**2 * sum(weight * (R_ref-R_ref_plus_x)**2)) matches R.
+    Zero perturbation is -Inf. Missing data are not silently imputed.
+    The native backend is serial; parallel/ncores do not promise speedup.
+    The historical unfinished Numba branch is explicitly unsupported.
+    """
+    if not isinstance(var, (list, tuple)) or len(var) < 2 or any(not isinstance(v, str) for v in var) or len(set(var)) != len(var):
+        raise ValueError("var must name at least two distinct biomarkers")
+    if any(not isinstance(v, (bool, np.bool_)) for v in [parallel, use_cpp, use_numba]):
+        raise ValueError("Backend flags must be booleans")
+    if not isinstance(ncores, (int, np.integer)) or isinstance(ncores, bool) or ncores < 1:
+        raise ValueError("ncores must be a positive integer")
+    if use_numba:
+        raise NotImplementedError("Historical Numba code was not compiled or validated; use NumPy or C++")
+    data = _matrix(d4, list(var), "d4", 2)
+    reference = _matrix(ref, list(var), "ref", 3)
+    if "age" not in d4 or not pd.api.types.is_numeric_dtype(d4["age"]) or pd.api.types.is_bool_dtype(d4["age"]) or pd.api.types.is_complex_dtype(d4["age"]):
+        raise ValueError("A real numeric age column is required")
+    age = d4["age"].to_numpy(dtype=np.float64)
+    with np.errstate(over="ignore", invalid="ignore"):
+        age_spread = np.std(age, ddof=1)
+    if not np.isfinite(age).all() or not np.isfinite(age_spread) or age_spread <= 0:
+        raise ValueError("Age must be finite and have positive variance")
+    correlations = np.array([np.corrcoef(age, data[:, j])[0, 1] for j in range(len(var))])
+    weight = np.abs(np.outer(correlations, correlations)); np.fill_diagonal(weight, 0)
+    total = weight.sum()
+    if not np.isfinite(weight).all() or not np.isfinite(total) or total <= 0:
+        raise ValueError("Age weights have zero or non-finite total")
+    weight /= total
     if use_cpp:
-        # 调用C++实现
-        from .disco_optimized import disco_optimized_cpp 
-        disco_values = disco_optimized_cpp(d_data, d_ref, weight)
-    elif use_numba:
-        disco_values = _disco_numba_optimized(
-            d_data, d_ref, weight, 
-            parallel=parallel, 
-            ncores=ncores
-        )
+        try:
+            from .disco_optimized import disco_optimized_cpp
+        except ImportError:
+            warnings.warn("Optional C++ backend is not installed; using validated NumPy", RuntimeWarning, stacklevel=2)
+            values = _python_disco_impl(data, reference, weight)
+        else:
+            values = disco_optimized_cpp(data, reference, weight).reshape(-1)
     else:
-        disco_values = _python_disco_impl(d_data, d_ref, weight)
-    
-    return d4.assign(DISCO=disco_values.flatten())
+        values = _python_disco_impl(data, reference, weight)
+    if np.isnan(values).any() or np.isposinf(values).any():
+        raise ValueError("DISCO calculation overflowed; check input magnitudes and units")
+    return d4.assign(DISCO=values)
 
-#@jit(nopython=True, nogil=True, cache=True)
-def _disco_numba_optimized(
-    d_data: np.ndarray,
-    d_ref: np.ndarray,
-    weight: np.ndarray,
-    parallel: bool = True,
-    ncores: int = 4
-) -> np.ndarray:
-    """
-    Numba优化核心计算
-    比纯Python快10-100倍
-    """
-    n_ref = d_ref.shape[0]
-    p = d_ref.shape[1]
-    results = np.zeros(d_data.shape[0])
-    ref_corr = np.corrcoef(d_ref, rowvar=False)
-
-    # 并行计算
-    for i in prange(d_data.shape[0]) if parallel else range(d_data.shape[0]):
-        combined = np.vstack((d_ref, d_data[i:i+1]))
-        cc1 = np.corrcoef(combined, rowvar=False)
-        ds = np.nansum((ref_corr - cc1)**2 * weight)
-        results[i] = np.log(ds * n_ref**2) if ds > 0 else np.log(1e-300)
-
-    return results
-
-def _python_disco_impl(d_data, d_ref, weight):
-    """Python实现（备用）"""
-    ref_corr = np.corrcoef(d_ref, rowvar=False)
-    results = []
-    for i in range(d_data.shape[0]):
-        combined = np.vstack([d_ref, d_data[i]])
-        cc1 = np.corrcoef(combined, rowvar=False)
-        ds = np.nansum((ref_corr - cc1)**2 * weight)
-        results.append(np.log(ds * d_ref.shape[0]**2))
-    return np.array(results)
-
+def _python_disco_impl(data, reference, weight):
+    """Independent Pearson recomputation, not the native rank-one formula."""
+    correlation = np.corrcoef(reference, rowvar=False)
+    result = []
+    for row in data:
+        updated = np.corrcoef(np.vstack([reference, row]), rowvar=False)
+        value = np.sum((correlation - updated)**2 * weight)
+        with np.errstate(divide="ignore"):
+            result.append(np.log(value * len(reference)**2))
+    return np.asarray(result)

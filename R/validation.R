@@ -9,7 +9,7 @@
   x
 }
 .disco_age <- function(age, n) {
-  if (!is.numeric(age) || length(age) != n || any(!is.finite(age)) || stats::sd(age) == 0)
+  if (!is.numeric(age) || length(age) != n || n < 2L || any(!is.finite(age)) || stats::sd(age) == 0)
     stop("age must be a finite numeric vector with one value per row and positive variance", call. = FALSE)
   age
 }

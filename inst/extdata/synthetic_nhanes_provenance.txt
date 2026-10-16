@@ -1,0 +1,12 @@
+List of 9
+ $ synthetic              : logi TRUE
+ $ seed                   : num 20261001
+ $ calibration            : chr "Bundled NHANES aggregate reference; no individual-level records"
+ $ reference_age_rule     : chr "age < 30"
+ $ reference_n            : int 6616
+ $ age_design             : chr "20% uniform age 20-29; 80% uniform age 30-85 (artificial)"
+ $ age_shift              : chr "Chosen illustrative linear shift, not fitted to observed individuals"
+ $ negative_values_clipped: Named num [1:10] 15 0 0 0 0 0 0 0 0 0
+  ..- attr(*, "names")= chr [1:10] "CRP" "GLU" "CHOL" "HDL" ...
+ $ units                  : Named chr [1:10] "mg/L" "mmol/L" "mmol/L" "mmol/L" ...
+  ..- attr(*, "names")= chr [1:10] "CRP" "GLU" "CHOL" "HDL" ...

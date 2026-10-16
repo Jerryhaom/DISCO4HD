@@ -1,0 +1,4 @@
+include DISCO4HD/disco.cpp
+include README_PORTABLE.txt
+recursive-include tests *.py
+include README.md LICENSE
